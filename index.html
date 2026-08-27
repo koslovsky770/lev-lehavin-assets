@@ -262,6 +262,26 @@
     font-size:18px;line-height:1.75;
   }
 
+  .video-wrap{
+    max-width:620px;
+    margin:0 auto 40px;
+    border-radius:20px;
+    overflow:hidden;
+    background:var(--ink);
+    border:1.5px solid var(--copper);
+    box-shadow:0 26px 50px -24px rgba(90,60,20,.45);
+    line-height:0;
+  }
+  .video-wrap video{
+    width:100%;
+    height:auto;
+    display:block;
+    max-height:70vh;
+  }
+  @media (max-width:900px){
+    .video-wrap{max-width:100%;margin-bottom:30px;border-radius:16px}
+  }
+
   /* Three pillars */
   .pillars{padding:110px 0}
   .section-head{text-align:center;margin-bottom:64px}
@@ -1031,6 +1051,17 @@
     <p class="q reveal" data-edit>
       מה קורה כשאיגרת בת מאות שנים<br> פוגשת לב של אדם בן זמננו?
     </p>
+
+    <div class="video-wrap reveal">
+      <video
+        src="book-video.mp4"
+        controls
+        playsinline
+        preload="metadata"
+        poster="book_cover.webp"
+        aria-label="סרטון על הספר לב להבין"></video>
+    </div>
+
     <p class="a reveal" data-edit>
       בין דפי הספר הזה נפתחת שיחה של אמת ועומק -
       בין דורות, בין מחשבה לרגש, בין יראה לעשייה.
