@@ -831,87 +831,8 @@
     .book-stack{animation:none}
   }
 
-  /* ========== EDIT MODE ========== */
-  [hidden]{display:none !important}
-  /* Edit UI is hidden from visitors. Owner opens it with Ctrl+Shift+E. */
-  #edit-controls{display:none}
-  body.edit-available #edit-controls{display:flex}
-  #edit-controls{
-    position:fixed;bottom:20px;left:20px;z-index:9998;
-    display:flex;gap:8px;align-items:center;
-    font-family:'Assistant',sans-serif;
-  }
-  #edit-controls button{
-    background:var(--ink);color:var(--ground);
-    padding:12px 20px;border-radius:999px;
-    font-weight:600;font-size:14px;
-    border:0;cursor:pointer;
-    box-shadow:0 8px 24px -6px rgba(0,0,0,.25);
-    display:flex;align-items:center;gap:8px;
-    transition:background .2s ease, transform .2s ease;
-    font-family:inherit;
-  }
-  #edit-controls button:hover{transform:translateY(-2px)}
-  #edit-mode-toggle.active{background:var(--copper);color:#fff}
-  #edit-mode-toggle .dot{
-    width:8px;height:8px;border-radius:50%;
-    background:var(--sage);
-  }
-  #edit-mode-toggle.active .dot{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.25)}
-  #edit-reset, #edit-export{
-    background:var(--card) !important;color:var(--ink) !important;
-    border:1px solid var(--rule) !important;
-    padding:10px 16px !important;
-    font-size:13px !important;
-  }
-  #edit-reset:hover{border-color:#a33 !important;color:#a33 !important}
-  #edit-export:hover{border-color:var(--copper) !important;color:var(--copper) !important}
-  #edit-status{
-    background:var(--copper) !important;color:#fff !important;
-    padding:8px 14px !important;font-size:12px !important;
-    opacity:0;transition:opacity .3s ease;pointer-events:none;
-  }
-  #edit-status.show{opacity:1}
 
-  body.edit-on [data-edit]{
-    outline:1px dashed transparent;
-    outline-offset:6px;
-    border-radius:4px;
-    transition:outline-color .15s ease, background .15s ease;
-    cursor:text;
-  }
-  body.edit-on [data-edit]:hover{
-    outline-color:var(--copper);
-    background:var(--copper-glow);
-  }
-  body.edit-on [data-edit][contenteditable="true"]{
-    outline:2px solid var(--copper);
-    background:var(--copper-glow);
-    box-shadow:0 0 0 4px var(--copper-glow);
-  }
-  #edit-toolbar{
-    position:absolute;z-index:9999;
-    display:none;
-    background:var(--ink);color:var(--ground);
-    border-radius:10px;
-    box-shadow:0 10px 30px -6px rgba(0,0,0,.35);
-    padding:4px;
-    font-family:'Assistant',sans-serif;
-    direction:ltr;
-  }
-  #edit-toolbar button{
-    background:transparent;border:0;color:var(--ground);
-    padding:6px 12px;font-size:13px;font-weight:600;
-    border-radius:6px;cursor:pointer;font-family:inherit;
-    display:inline-flex;align-items:center;gap:6px;
-    transition:background .15s ease;
-  }
-  #edit-toolbar button:hover{background:rgba(255,255,255,.12)}
-  #edit-toolbar button.delete:hover{background:#a33;color:#fff}
-  #edit-toolbar .sep{
-    display:inline-block;width:1px;height:16px;background:rgba(255,255,255,.2);
-    vertical-align:middle;margin:0 2px;
-  }
+  [hidden]{display:none !important}
 
   /* Responsive */
   @media (max-width: 900px){
@@ -937,7 +858,6 @@
     form{padding:26px}
     .topbar{padding:16px 20px}
     .wrap{padding:0 20px}
-    #edit-mode-toggle{bottom:12px;left:12px;padding:10px 14px;font-size:12px}
     .fab-wa{bottom:16px;right:16px;width:54px;height:54px}
     .fab-wa svg{width:28px;height:28px}
   }
@@ -945,7 +865,6 @@
     #mobile-cta{display:flex}
     body.mcta-visible{padding-bottom:82px}
     body.mcta-visible .fab-wa{bottom:88px}
-    body.mcta-visible #edit-controls{bottom:88px}
   }
 </style>
 </head>
@@ -1194,20 +1113,6 @@
   </svg>
 </a>
 
-<!-- Edit mode UI -->
-<div id="edit-controls">
-  <button id="edit-mode-toggle" aria-pressed="false">
-    <span class="dot"></span>
-    <span id="edit-mode-label">מצב עריכה כבוי</span>
-  </button>
-  <button id="edit-reset" title="החזר את כל הטקסטים למקור" hidden>↺ אפס</button>
-  <span id="edit-status" hidden>נשמר ✓</span>
-</div>
-<div id="edit-toolbar" role="toolbar" aria-label="עריכת טקסט">
-  <button data-action="edit">✎ ערוך</button>
-  <span class="sep"></span>
-  <button data-action="delete" class="delete">✕ מחק</button>
-</div>
 
 <script>
   // Reveal on scroll
@@ -1269,194 +1174,6 @@
       priceOb.observe(priceSection);
     }
   }
-
-
-  // =============== EDIT MODE + PERSISTENCE ===============
-  const STORAGE_KEY = 'lev-lehavin-edits-v6';
-  // clear previous versions (now unused: ids are content-hash based, no version bumps needed going forward)
-  ['v1','v2','v3','v4','v5'].forEach(v=>{ try{ localStorage.removeItem('lev-lehavin-edits-' + v); }catch(e){} });
-  const toggle = document.getElementById('edit-mode-toggle');
-  const label = document.getElementById('edit-mode-label');
-  const resetBtn = document.getElementById('edit-reset');
-  const statusEl = document.getElementById('edit-status');
-  const toolbar = document.getElementById('edit-toolbar');
-
-  // --- storage helpers ---
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return {edits:{}, deleted:[]};
-      const s = JSON.parse(raw);
-      s.edits = s.edits || {};
-      s.deleted = s.deleted || [];
-      return s;
-    }catch(e){ return {edits:{}, deleted:[]}; }
-  }
-  function saveState(s){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); flashStatus('נשמר ✓'); }
-    catch(e){ flashStatus('שגיאה בשמירה'); }
-  }
-  function flashStatus(msg){
-    if(!statusEl) return;
-    statusEl.textContent = msg;
-    statusEl.hidden = false;
-    statusEl.classList.add('show');
-    clearTimeout(flashStatus._t);
-    flashStatus._t = setTimeout(()=>{
-      statusEl.classList.remove('show');
-      setTimeout(()=>{ statusEl.hidden = true; }, 300);
-    }, 1400);
-  }
-
-  // --- assign stable ids ---
-  function hashStr(s){
-    let h = 5381;
-    for(let i=0;i<s.length;i++){ h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
-    return 'h' + (h >>> 0).toString(36);
-  }
-  const editables = document.querySelectorAll('[data-edit]');
-  const idCounts = {};
-  editables.forEach((el)=>{
-    if(el.dataset.editId) return; // explicit id wins, never touched
-    // Content-based id: stable across DOM reordering/insertions/removals.
-    // If I (the page author) later change this element's own source text,
-    // its id changes too, so any stale saved edit for the OLD text is
-    // automatically ignored instead of silently reapplying to new copy.
-    const base = hashStr(el.tagName + '|' + el.textContent.trim());
-    const n = (idCounts[base] = (idCounts[base] || 0) + 1);
-    el.dataset.editId = n > 1 ? base + '-' + n : base;
-  });
-
-  // --- restore state ---
-  const state = loadState();
-  // apply text edits
-  Object.entries(state.edits).forEach(([id, html])=>{
-    const el = document.querySelector('[data-edit-id="'+id+'"]');
-    if(el) el.innerHTML = html;
-  });
-  // apply deletions
-  state.deleted.forEach(id=>{
-    const el = document.querySelector('[data-edit-id="'+id+'"]');
-    if(el) el.remove();
-  });
-
-  // --- edit mode state ---
-  let editOn = false;
-  let hovered = null;
-  let editing = null;
-  let toolbarLocked = false;
-
-  toggle.addEventListener('click', ()=>{
-    editOn = !editOn;
-    document.body.classList.toggle('edit-on', editOn);
-    toggle.classList.toggle('active', editOn);
-    toggle.setAttribute('aria-pressed', editOn ? 'true' : 'false');
-    label.textContent = editOn ? 'מצב עריכה פעיל' : 'מצב עריכה כבוי';
-    resetBtn.hidden = !editOn;
-    if(!editOn){ hideToolbar(); finishEditing(); }
-  });
-
-  resetBtn.addEventListener('click', ()=>{
-    if(confirm('לאפס את כל השינויים ולהחזיר את הדף לגרסה המקורית?')){
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
-    }
-  });
-
-  function positionToolbar(el){
-    const r = el.getBoundingClientRect();
-    toolbar.style.display = 'inline-flex';
-    const tw = toolbar.offsetWidth || 140;
-    let top = window.scrollY + r.top - toolbar.offsetHeight - 8;
-    if(top < window.scrollY + 8) top = window.scrollY + r.bottom + 8;
-    let left = window.scrollX + r.right - tw;
-    if(left < 8) left = 8;
-    toolbar.style.top = top + 'px';
-    toolbar.style.left = left + 'px';
-  }
-  function showToolbarFor(el){ hovered = el; positionToolbar(el); }
-  function hideToolbar(){
-    if(toolbarLocked) return;
-    toolbar.style.display = 'none';
-    hovered = null;
-  }
-
-  document.addEventListener('mouseover', (e)=>{
-    if(!editOn || editing) return;
-    const el = e.target.closest('[data-edit]');
-    if(el){ showToolbarFor(el); }
-  });
-  document.addEventListener('mouseout', (e)=>{
-    if(!editOn || editing) return;
-    if(e.relatedTarget && (e.relatedTarget.closest('[data-edit]') || e.relatedTarget.closest('#edit-toolbar'))) return;
-    hideToolbar();
-  });
-
-  toolbar.addEventListener('mouseenter', ()=>{ toolbarLocked = true; });
-  toolbar.addEventListener('mouseleave', ()=>{ toolbarLocked = false; if(!editing) hideToolbar(); });
-
-  toolbar.addEventListener('click', (e)=>{
-    const btn = e.target.closest('button');
-    if(!btn || !hovered) return;
-    const action = btn.dataset.action;
-    if(action === 'edit'){
-      startEditing(hovered);
-    } else if(action === 'delete'){
-      if(confirm('למחוק את האלמנט הזה? (ניתן להחזיר עם ״אפס״)')){
-        const id = hovered.dataset.editId;
-        hovered.remove();
-        const s = loadState();
-        if(id && !s.deleted.includes(id)) s.deleted.push(id);
-        if(id && s.edits[id]) delete s.edits[id];
-        saveState(s);
-        toolbarLocked = false;
-        hideToolbar();
-      }
-    }
-  });
-
-  function startEditing(el){
-    editing = el;
-    el.setAttribute('contenteditable', 'true');
-    el.focus();
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    toolbarLocked = false;
-    toolbar.style.display = 'none';
-    el.addEventListener('blur', onEditBlur);
-    el.addEventListener('keydown', onEditKey);
-  }
-  function finishEditing(){
-    if(!editing) return;
-    const el = editing;
-    const id = el.dataset.editId;
-    if(id){
-      const s = loadState();
-      s.edits[id] = el.innerHTML;
-      saveState(s);
-    }
-    el.removeAttribute('contenteditable');
-    el.removeEventListener('blur', onEditBlur);
-    el.removeEventListener('keydown', onEditKey);
-    editing = null;
-  }
-  function onEditBlur(){ finishEditing(); }
-  function onEditKey(e){
-    if(e.key === 'Escape'){ e.preventDefault(); finishEditing(); }
-  }
-
-  // Keyboard shortcut: "e" toggles edit mode
-  document.addEventListener('keydown', (e)=>{
-    if((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'E' || e.key === 'e')){
-      e.preventDefault();
-      document.body.classList.add('edit-available');
-      toggle.click();
-    }
-  });
 </script>
 
 </body>
